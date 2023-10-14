@@ -1,15 +1,14 @@
 package br.com.rocketseat.todolist.task;
 
+import br.com.rocketseat.todolist.utils.Util;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -34,5 +33,27 @@ public class TaskController {
         }
 
         return ResponseEntity.status(HttpStatus.OK).body(this.taskRepository.save(taskModel));
+    }
+
+    @GetMapping("/")
+    public List<TaskModel> list(HttpServletRequest request) {
+        return this.taskRepository.findByIdUser((UUID) request.getAttribute("idUser"));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity update(@RequestBody TaskModel taskModel, @PathVariable UUID id, HttpServletRequest request) {
+        var task = this.taskRepository.findById(id).orElse(null);
+
+        if (task == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Tarefa não encontrada");
+        }
+
+        if (!task.getIdUser().equals(request.getAttribute("idUser"))) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Usuário sem permissão para alterar essa tarefa");
+        }
+
+        Util.copyNonNullProperties(taskModel, task);
+        var updatedTask = this.taskRepository.save(task);
+        return ResponseEntity.status(HttpStatus.OK).body(updatedTask);
     }
 }
